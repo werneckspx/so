@@ -1,0 +1,6 @@
+SUB, 4, 1, 3
+STORE, 1, 2, 0
+LOAD, 0, 2, 0
+SUB, 4, 1, 3
+STORE, 5, 5, 0
+LOAD, 0, 2, 0
