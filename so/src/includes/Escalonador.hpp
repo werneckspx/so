@@ -20,11 +20,16 @@ private:
     vector<unique_ptr<mutex>> core_mutexes; // Mutexes para cada core
     mutex output_mutex; // Mutex para proteger a saída padrão
     Barramento barramento;
-    vector<ThreadContext> thread_contexts;
     unordered_set<int> running_threads; // Conjunto de threads atualmente rodando// Mutexes para cada core
     mutex queue_mutex;
 
+
 public:
+    queue<ThreadContext> alta_prioridade;
+    queue<ThreadContext> media_prioridade;
+    queue<ThreadContext> baixa_prioridade;
+    vector<ThreadContext> thread_contexts;
+
     Escalonador(int num_cores, RAM& ram, Disco& disco,const vector<int>& instructionAddresses);
     int tempo_simulado = 0; 
 

@@ -13,14 +13,14 @@ Escalonador::Escalonador(int num_cores, RAM& ram, Disco& disco, const vector<int
     for (size_t i = 0; i < instructionAddresses.size(); ++i) {
         int start_addr = (i > 0) ? instructionAddresses[i-1] : 0; // Define o endereço de início
         int end_addr = instructionAddresses[i]; // Define o endereço final
-        thread_contexts.emplace_back(start_addr, end_addr, i,2); // Cria o contexto da thread
+        thread_contexts.emplace_back(start_addr, end_addr, i,2, (i % 3)); // Cria o contexto da thread
     }
 }
 
 void Escalonador::run_thread(RAM& ram, int thread_id, const vector<int>& instructionAddresses) {
     {
         unique_lock<mutex> lock(queue_mutex);
-        barramento.waiting_threads.push(thread_id);
+        //barramento.waiting_threads.push(thread_id);
     }
 
     while (!barramento.all_threads_completed()) {
@@ -29,12 +29,23 @@ void Escalonador::run_thread(RAM& ram, int thread_id, const vector<int>& instruc
 
         {
             unique_lock<mutex> lock(queue_mutex);
-            if (!barramento.waiting_threads.empty()) {
+            if ((!alta_prioridade.empty()) || (!media_prioridade.empty())|| (!baixa_prioridade.empty())) {
                 for (size_t i = 0; i < cores.size(); ++i) {
                     if (core_mutexes[i]->try_lock()) {
                         if (!cores[i].is_busy()) {
-                            current_thread_id = barramento.waiting_threads.front();
-                            barramento.waiting_threads.pop();
+                            if (!alta_prioridade.empty()){
+                                current_thread_id = alta_prioridade.front().thread_id;
+                                alta_prioridade.pop();
+                            }else if ((!media_prioridade.empty())){
+                                current_thread_id = media_prioridade.front().thread_id;
+                                media_prioridade.pop();
+                            }else{
+                                current_thread_id = baixa_prioridade.front().thread_id;
+                                baixa_prioridade.pop();
+                            }
+                            
+                            //current_thread_id = barramento.waiting_threads.front();
+                            //barramento.waiting_threads.pop();
                             core_index = i;
                             running_threads.insert(current_thread_id);
                             lock.unlock();
@@ -45,6 +56,7 @@ void Escalonador::run_thread(RAM& ram, int thread_id, const vector<int>& instruc
                             // Mensagem com timestamp
                             cout << "[" << getTimestamp() << "] "
                                  << "Thread " << current_thread_id 
+                                 << " prioridade " << context.priority
                                  << " usando Core " << core_index 
                                  << " com range: [" << context.start_address 
                                  << ", " << context.end_address << "]" << endl;
@@ -74,7 +86,11 @@ void Escalonador::run_thread(RAM& ram, int thread_id, const vector<int>& instruc
                     cout << "[" << getTimestamp() << "] "
                          << "Thread " << current_thread_id << " marcada como concluída." << endl;
                 } else {
-                    barramento.waiting_threads.push(current_thread_id);
+                    if (context.priority == 0) alta_prioridade.push(context);
+                    else if (context.priority == 1) media_prioridade.push(context);
+                    else baixa_prioridade.push(context);
+                    
+                    //barramento.waiting_threads.push(current_thread_id);
                 }
             }
 
