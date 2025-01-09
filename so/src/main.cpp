@@ -72,13 +72,18 @@ int main() {
 
     Escalonador escalonador(num_cores, ram, disco, instructionAddresses);
 
-    for (int i = 0; i < num_threads; ++i)
+    for (int i = 0; i < num_threads; i++)
     {
         ThreadContext& context = escalonador.thread_contexts[i];
         
         if (context.priority == 0) escalonador.alta_prioridade.push(context);
         else if (context.priority == 1) escalonador.media_prioridade.push(context);
         else escalonador.baixa_prioridade.push(context);
+    }
+    
+
+    for (int i = 0; i < num_threads; ++i)
+    {
         threads_escalonador.emplace_back(threads_function_escalonador, ref(escalonador), ref(ram), ref(instructionAddresses), i);
     }
 

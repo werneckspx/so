@@ -54,13 +54,15 @@ void Escalonador::run_thread(RAM& ram, int thread_id, const vector<int>& instruc
                             ThreadContext& context = thread_contexts[current_thread_id];
 
                             // Mensagem com timestamp
+                            {
+                            unique_lock<mutex> output_mutex;
                             cout << "[" << getTimestamp() << "] "
                                  << "Thread " << current_thread_id 
                                  << " prioridade " << context.priority
                                  << " usando Core " << core_index 
                                  << " com range: [" << context.start_address 
                                  << ", " << context.end_address << "]" << endl;
-
+                            }
                             break;
                         } else {
                             core_mutexes[i]->unlock();
@@ -76,10 +78,17 @@ void Escalonador::run_thread(RAM& ram, int thread_id, const vector<int>& instruc
 
             // Atualiza o tempo simulado com o valor do quantum
             atualizarTempo(context.quantum);
+            context.execution_time = tempo_simulado;
 
             {
                 unique_lock<mutex> lock(queue_mutex);
                 running_threads.erase(current_thread_id);
+                if (context.execution_time >= 4 && context.priority == 0)
+                {
+                    context.priority = context.priority + 1; 
+                    cout << "Diminuindo prioridade thread: " << current_thread_id << endl; 
+                }
+                
                 if (thread_completed) {
                     barramento.mark_thread_completed(current_thread_id);
                     // Mensagem com timestamp
