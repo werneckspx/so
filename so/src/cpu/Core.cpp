@@ -11,6 +11,7 @@ bool Core::activate_with_context(ThreadContext& context, RAM& ram, mutex& output
 
     int instructions_executed = 0;
     int quantum_remaing = context.quantum;
+    int remaing_cost = context.remaining_cost;
 
     cout << "Core ativado para Thread " << context.thread_id 
          << " com range: [" << context.start_address 
@@ -25,14 +26,14 @@ bool Core::activate_with_context(ThreadContext& context, RAM& ram, mutex& output
     // Executa apenas as instruções dentro do intervalo da thread
     while (relative_PC < context.end_address && quantum_remaing > 0) {
         try {
-            uc.executarInstrucao(regs, ram, relative_PC, context.end_address,"data/setRegisters.txt", disco, Clock, instructions_executed, quantum_remaing);
+            uc.executarInstrucao(regs, ram, relative_PC, context.end_address,"data/setRegisters.txt", disco, Clock, instructions_executed, quantum_remaing, remaing_cost);
             if (relative_PC >= context.end_address) {
                 cout << "PipelineProcess concluído: todas as instruções foram executadas." << endl;
                 return true;
             } else if (quantum_remaing == 0) {
                 cout << "PipelineProcess encerrado: quantum restante atingiu zero." << endl;
                 context.start_address = relative_PC;
-                //quantum_remaing = context.quantum;
+                context.remaining_cost = remaing_cost;
                 return false;
             }          
         }
@@ -45,6 +46,7 @@ bool Core::activate_with_context(ThreadContext& context, RAM& ram, mutex& output
 
     context.current_address = relative_PC; // Atualiza o progresso da thread
     context.execution_time += instructions_executed; // Incrementa o tempo de execução
+    //context.remaining_cost = remaing_cost;
 
     return relative_PC >= context.end_address;  
 }

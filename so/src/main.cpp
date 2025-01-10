@@ -9,6 +9,7 @@
 #include "includes/Core.hpp"
 #include "includes/perifericos.hpp"
 #include "includes/Escalonador.hpp"
+#include <numeric> 
 #include <thread>
 #include <vector>
 #include <queue>
@@ -18,13 +19,20 @@
 #include <iostream>
 #include <mutex>
 #include <filesystem>
+#include <map>
 
 using namespace std;
 namespace fs = filesystem;
 
-void thread_function(RAM& ram, vector<int>& instructionAddresses, int thread_id, int&instructionAdress);
-int loadInstructionsFromFile(RAM& ram, const string& instrFilename, int& instructionAdress);
-void threads_function_escalonador(Escalonador& escalonador, RAM& ram, vector<int>& instructionAddresses, int thread_id);
+map<Opcode, int> operationWeights = {
+    {ADD, 7}, {SUB, 7}, {AND, 7}, {OR, 7},
+    {STORE, 8}, {LOAD, 7}, {MULT, 8}, {DIV, 9},
+    {IF_igual, 7}, {ENQ, 10} // Exemplo, ajuste o peso do ENQ conforme o custo por iteração
+};
+
+void thread_function(RAM& ram, vector<int>& instructionAddresses, int thread_id, int&instructionAdress,vector<int>& threadCosts);
+int loadInstructionsFromFile(RAM& ram, const string& instrFilename, int& instructionAdress,int& totalCost);
+void threads_function_escalonador(Escalonador& escalonador, RAM& ram, vector<int>& instructionAddresses, int thread_id,vector<int>& threadCosts);
 
 int main() {
     auto start = chrono::high_resolution_clock::now();
@@ -58,11 +66,14 @@ int main() {
     vector<int> instructionAddresses(num_threads, 0);
     vector<thread> threads;
     vector<thread> threads_escalonador;
+    vector<int> threadCosts(num_threads, 0);
+    vector<int> indices(num_threads);
+
     Barramento barramento(num_threads);
     
     // Carregar as instruções dos arquivos em paralelo
     for (int i = 0; i < num_threads; ++i) {
-        threads.emplace_back(thread_function, ref(ram), ref(instructionAddresses), i, ref(instructionAdress));
+        threads.emplace_back(thread_function, ref(ram), ref(instructionAddresses), i, ref(instructionAdress), ref(threadCosts));
         this_thread::sleep_for(chrono::milliseconds(50));
     }
 
@@ -70,11 +81,21 @@ int main() {
         t.join();
     }
 
-    Escalonador escalonador(num_cores, ram, disco, instructionAddresses);
+    Escalonador escalonador(num_cores, ram, disco, instructionAddresses); 
 
-    for (int i = 0; i < num_threads; ++i)
-    {
-        threads_escalonador.emplace_back(threads_function_escalonador, ref(escalonador), ref(ram), ref(instructionAddresses), i);
+    iota(indices.begin(), indices.end(), 0); 
+
+    sort(indices.begin(), indices.end(), [&threadCosts](int a, int b) {
+        return threadCosts[a] < threadCosts[b];
+    });
+    
+    for (int i : indices) {
+        escalonador.thread_contexts[i].remaining_cost = threadCosts[i];
+        cout << "Iniciando thread " << i << " com custo " << threadCosts[i] << std::endl;
+    }
+
+    for (int i : indices) {
+        threads_escalonador.emplace_back(threads_function_escalonador, ref(escalonador), ref(ram), ref(instructionAddresses), i, ref(threadCosts));
     }
 
     for (auto& t : threads_escalonador) {
@@ -96,25 +117,28 @@ int main() {
     return 0;
 }
 
-void threads_function_escalonador(Escalonador& escalonador, RAM& ram, vector<int>& instructionAddresses, int thread_id){
+void threads_function_escalonador(Escalonador& escalonador, RAM& ram, vector<int>& instructionAddresses, int thread_id, vector<int>& threadCosts){
     escalonador.run_thread(ram,thread_id,instructionAddresses);
 }
 
-void thread_function(RAM& ram, vector<int>& instructionAddresses, int thread_id, int& instructionAdress) {
+void thread_function(RAM& ram, vector<int>& instructionAddresses, int thread_id, int& instructionAdress, vector<int>& threadCosts) {
     string filename = "data/data" + to_string(thread_id + 1) + ".txt";
     cout << "Thread " << thread_id << " carregando o arquivo: " << filename << endl;
 
-    instructionAdress = loadInstructionsFromFile(ram, filename, instructionAdress);
+    int totalCost = 0;
+
+    instructionAdress = loadInstructionsFromFile(ram, filename, instructionAdress, totalCost);
     if (instructionAdress == -1) {
         cerr << "Falha ao carregar instruções para thread " << thread_id << endl;
     } else {
         cout << "Thread " << thread_id << " carregou instruções até o endereço: " << instructionAdress << endl;
         instructionAddresses[thread_id] = instructionAdress;
+        threadCosts[thread_id] = totalCost;
     }
 }
 
 
-int loadInstructionsFromFile(RAM& ram, const string& instrFilename, int& instructionAdress) {
+int loadInstructionsFromFile(RAM& ram, const string& instrFilename, int& instructionAdress,int& totalCost) {
     ifstream file(instrFilename);
     if (!file.is_open()) {
         cerr << "Erro ao abrir o arquivo de instruções: " << instrFilename << endl;
@@ -154,6 +178,9 @@ int loadInstructionsFromFile(RAM& ram, const string& instrFilename, int& instruc
 
         if (instructionAdress < ram.tamanho) {
             ram.instruction_memory[instructionAdress++] = instr;
+
+            // Adiciona o peso da instrução ao custo total
+            totalCost += operationWeights[opcode];
         } else {
             cerr << "Erro: memória RAM cheia, não é possível carregar mais instruções." << endl;
             break;

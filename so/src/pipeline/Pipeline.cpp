@@ -12,9 +12,15 @@ Pipeline::Pipeline() {} // Construtor da classe Pipeline
 
 // Método que processa o pipeline
 void Pipeline::PipelineProcess(Registers& regs, RAM& ram, int& relative_PC, int end_address, const string& regsFilename, Disco& disco, 
-    int& Clock, int& instructions_executed, int& quantum_remaing) {
+    int& Clock, int& instructions_executed, int& quantum_remaing,int& remaing_cost) {
     cout << "Iniciando o processamento do pipeline para Thread com limite: " 
              << end_address << endl;
+
+    map<int, int> operationWeights_pip = {
+        {0, 7}, {1, 7}, {4, 7}, {5, 7},
+        {3, 8}, {2, 7}, {7, 8}, {8, 9},
+        {9, 7}, {10, 10} // Exemplo, ajuste o peso do ENQ conforme o custo por iteração
+    };
 
     // Inicializa os registradores a partir do arquivo
     setRegistersFromFile(regs, regsFilename);
@@ -52,6 +58,7 @@ void Pipeline::PipelineProcess(Registers& regs, RAM& ram, int& relative_PC, int 
         ++relative_PC; // Incrementa em 1, pois estamos usando o índice da instrução
         --quantum_remaing; // Decrementa o quantum restante
         ++instructions_executed;
+        remaing_cost -= operationWeights_pip[decodedInstr.opcode];
 
         cout << "Clock: " << Clock << " | Quantum restante: " << quantum_remaing 
              << " | Instruções executadas: " << instructions_executed << endl;

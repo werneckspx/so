@@ -1,7 +1,7 @@
 #include "../includes/UnidadeControle.hpp"
 
 void UnidadeControle::executarInstrucao(Registers& regs, RAM& ram, int& relative_PC, int end_address, const string& regsFilename, 
-    Disco& disco, int& Clock, int& instructions_executed, int& quantum_remaing) {
+    Disco& disco, int& Clock, int& instructions_executed, int& quantum_remaing, int& remaing_cost) {
     pipeline.PipelineProcess(
             regs, 
             ram, 
@@ -11,6 +11,7 @@ void UnidadeControle::executarInstrucao(Registers& regs, RAM& ram, int& relative
             disco, 
             Clock,
             instructions_executed, 
-            quantum_remaing
+            quantum_remaing,
+            remaing_cost
     );
 }

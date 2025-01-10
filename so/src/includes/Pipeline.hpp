@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <cctype>
 #include <iostream>
+#include <map>
 
 class Pipeline
 {
@@ -24,15 +25,12 @@ private:
 public:
     Pipeline();
     void PipelineProcess(Registers& regs, RAM& ram, int& PC, int instructionAdress, const string& regsFilename, Disco& Disco, 
-    int& Clock, int& instructions_executed, int& quantum_remaing);
+    int& Clock, int& instructions_executed, int& quantum_remaing,int& remaing_cost);
     Instruction InstructionFetch(RAM& ram, int endereco);
     void Wb(const DecodedInstruction& decoded, int& resultado, RAM& ram, Disco& disco, int& Clock);
     void MemoryAccess(const DecodedInstruction& decoded, int resultado, Registers& regs, int& Clock);
     void setRegistersFromFile(Registers& regs, const std::string& regsFilename);
     void Execute(const DecodedInstruction& decoded, Registers& regs, RAM& ram, int& PC, Disco& Disco, int& Clock);
 };
-
-
-
 
 #endif

@@ -22,6 +22,7 @@ struct ThreadContext {
     int quantum;         // Quantum da thread
     int current_address; // Próxima instrução a ser executada
     int execution_time;  // Tempo total de execução da thread
+    int remaining_cost;
 
     ThreadContext(int start, int end, int thread_id, int quantum) 
         : start_address(start), 
@@ -30,7 +31,8 @@ struct ThreadContext {
           thread_id(thread_id),
           quantum(quantum), 
           current_address(start),
-          execution_time(0) {}
+          execution_time(0),
+          remaining_cost(0) {}
 };
 
 

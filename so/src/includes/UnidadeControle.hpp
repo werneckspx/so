@@ -18,7 +18,7 @@ private:
 
 public:
     void executarInstrucao(Registers& regs, RAM& ram, int& relative_PC, int end_address, const string& regsFilename, Disco& disco, 
-    int& Clock, int& instructions_executed, int& quantum_remaing);
+    int& Clock, int& instructions_executed, int& quantum_remaing,int& remaing_cost);
 };
 
 #endif

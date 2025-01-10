@@ -2,7 +2,7 @@
 
 // Construtor da classe Escalonador
 Escalonador::Escalonador(int num_cores, RAM& ram, Disco& disco, const vector<int>& instructionAddresses) 
-    : barramento(instructionAddresses.size()) {
+    : barramento(instructionAddresses.size()),waiting_threads(CompareThreadCost(thread_contexts)) {
     // Inicializa os núcleos
     for (int i = 0; i < num_cores; ++i) {
         cores.emplace_back(ram, disco); // Adiciona um novo core
@@ -20,7 +20,7 @@ Escalonador::Escalonador(int num_cores, RAM& ram, Disco& disco, const vector<int
 void Escalonador::run_thread(RAM& ram, int thread_id, const vector<int>& instructionAddresses) {
     {
         unique_lock<mutex> lock(queue_mutex);
-        barramento.waiting_threads.push(thread_id);
+        waiting_threads.push(thread_id); // Adiciona a thread à fila de prioridade
     }
 
     while (!barramento.all_threads_completed()) {
@@ -29,22 +29,21 @@ void Escalonador::run_thread(RAM& ram, int thread_id, const vector<int>& instruc
 
         {
             unique_lock<mutex> lock(queue_mutex);
-            if (!barramento.waiting_threads.empty()) {
+            if (!waiting_threads.empty()) {
                 for (size_t i = 0; i < cores.size(); ++i) {
                     if (core_mutexes[i]->try_lock()) {
                         if (!cores[i].is_busy()) {
-                            current_thread_id = barramento.waiting_threads.front();
-                            barramento.waiting_threads.pop();
+                            current_thread_id = waiting_threads.top(); // Pega a thread com menor custo
+                            waiting_threads.pop(); // Remove a thread da fila
                             core_index = i;
                             running_threads.insert(current_thread_id);
                             lock.unlock();
 
-                            // Declara a variável context aqui
                             ThreadContext& context = thread_contexts[current_thread_id];
 
-                            // Mensagem com timestamp
                             cout << "[" << getTimestamp() << "] "
                                  << "Thread " << current_thread_id 
+                                 << " custo atual " << context.remaining_cost
                                  << " usando Core " << core_index 
                                  << " com range: [" << context.start_address 
                                  << ", " << context.end_address << "]" << endl;
@@ -62,7 +61,6 @@ void Escalonador::run_thread(RAM& ram, int thread_id, const vector<int>& instruc
             ThreadContext& context = thread_contexts[current_thread_id];
             bool thread_completed = cores[core_index].activate_with_context(context, ram, output_mutex);
 
-            // Atualiza o tempo simulado com o valor do quantum
             atualizarTempo(context.quantum);
 
             {
@@ -70,11 +68,10 @@ void Escalonador::run_thread(RAM& ram, int thread_id, const vector<int>& instruc
                 running_threads.erase(current_thread_id);
                 if (thread_completed) {
                     barramento.mark_thread_completed(current_thread_id);
-                    // Mensagem com timestamp
                     cout << "[" << getTimestamp() << "] "
                          << "Thread " << current_thread_id << " marcada como concluída." << endl;
                 } else {
-                    barramento.waiting_threads.push(current_thread_id);
+                    waiting_threads.push(current_thread_id); // Reinsere a thread na fila de prioridade
                 }
             }
 

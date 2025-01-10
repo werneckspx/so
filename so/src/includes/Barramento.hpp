@@ -14,7 +14,6 @@ class Barramento {
 public:
     Barramento(int num_threads) : thread_completed(num_threads, false) {}
 
-    queue<int> waiting_threads;
     mutex mtx;
     condition_variable cv;
     vector<bool> thread_completed;
