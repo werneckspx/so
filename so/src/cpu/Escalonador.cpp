@@ -64,6 +64,7 @@ void Escalonador::run_thread(RAM& ram, int thread_id, const vector<int>& instruc
 
             // Atualiza o tempo simulado com o valor do quantum
             atualizarTempo(context.quantum);
+            cout << endl;
 
             {
                 unique_lock<mutex> lock(queue_mutex);

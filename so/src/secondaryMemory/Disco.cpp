@@ -9,7 +9,7 @@ void Disco::write(int valor) {
         for (int i = 0; i < LINHAS; ++i) {
             if (!memoria[i][j].second) { 
                 memoria[i][j] = {valor, true}; 
-                std::cout << "Valor " << valor << " inserido em [" << i << "][" << j << "]" << std::endl;
+                //std::cout << "Valor " << valor << " inserido em [" << i << "][" << j << "]" << std::endl;
                 inserido = true;
                 return;
             }
