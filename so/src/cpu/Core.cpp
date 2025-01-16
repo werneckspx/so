@@ -28,10 +28,10 @@ bool Core::activate_with_context(ThreadContext& context, RAM& ram, mutex& output
         try {
             uc.executarInstrucao(regs, ram, relative_PC, context.end_address,"data/setRegisters.txt", disco, Clock, instructions_executed, quantum_remaing, remaing_cost);
             if (relative_PC >= context.end_address) {
-                cout << "PipelineProcess concluído: todas as instruções foram executadas." << endl;
+                //cout << "PipelineProcess concluído: todas as instruções foram executadas." << endl;
                 return true;
             } else if (quantum_remaing == 0) {
-                cout << "PipelineProcess encerrado: quantum restante atingiu zero." << endl;
+                //cout << "PipelineProcess encerrado: quantum restante atingiu zero." << endl;
                 context.start_address = relative_PC;
                 context.remaining_cost = remaing_cost;
                 return false;

@@ -62,6 +62,7 @@ void Escalonador::run_thread(RAM& ram, int thread_id, const vector<int>& instruc
             bool thread_completed = cores[core_index].activate_with_context(context, ram, output_mutex);
 
             atualizarTempo(context.quantum);
+            cout << endl;
 
             {
                 unique_lock<mutex> lock(queue_mutex);

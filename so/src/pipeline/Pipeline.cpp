@@ -13,8 +13,7 @@ Pipeline::Pipeline() {} // Construtor da classe Pipeline
 // Método que processa o pipeline
 void Pipeline::PipelineProcess(Registers& regs, RAM& ram, int& relative_PC, int end_address, const string& regsFilename, Disco& disco, 
     int& Clock, int& instructions_executed, int& quantum_remaing,int& remaing_cost) {
-    cout << "Iniciando o processamento do pipeline para Thread com limite: " 
-             << end_address << endl;
+    //cout << "Iniciando o processamento do pipeline para Thread com limite: " << end_address << endl;
 
     map<int, int> operationWeights_pip = {
         {0, 7}, {1, 7}, {4, 7}, {5, 7},
@@ -37,19 +36,18 @@ void Pipeline::PipelineProcess(Registers& regs, RAM& ram, int& relative_PC, int 
 
         // Busca a instrução
         Instruction instr = InstructionFetch(ram, mem_address);
-        cout << "Buscando instrução na posição " << mem_address 
-             << ": " << instr << endl;
+        cout << "Buscando instrução na posição " << mem_address << endl;
         Clock++; // Incrementa o clock
 
         // Decodifica a instrução
         DecodedInstruction decodedInstr = InstructionDecode(instr, regs);
         Clock++; // Incrementa o clock
 
-        cout << "[ID]: "
+        /*cout << "[ID]: "
              << "Opcode: " << decodedInstr.opcode
              << ", Destino: R" << decodedInstr.destiny
              << ", Operando 1: " << decodedInstr.value1
-             << ", Operando 2: " << decodedInstr.value2 << endl;
+             << ", Operando 2: " << decodedInstr.value2 << endl;*/
 
         // Executa a instrução
         Execute(decodedInstr, regs, ram, relative_PC, disco, Clock);
@@ -134,7 +132,7 @@ void Pipeline::Execute(const DecodedInstruction& decoded, Registers& regs, RAM& 
             Wb(decoded, valor, ram, disco, Clock);
             cout << "STORE RAM[" << decoded.value1 << "] = R" << decoded.destiny << " -> " << valor << endl;
             disco.write(valor);
-            cout << "STORE DISK[" << valor << "]" << endl;
+            //cout << "STORE DISK[" << valor << "]" << endl;
             break;
         }
         case MULT: {

@@ -91,9 +91,10 @@ int main() {
     
     for (int i : indices) {
         escalonador.thread_contexts[i].remaining_cost = threadCosts[i];
-        cout << "Iniciando thread " << i << " com custo " << threadCosts[i] << std::endl;
+        cout << "Iniciando thread " << i << " com custo " << threadCosts[i] << endl;
     }
 
+    cout << endl ;
     for (int i : indices) {
         threads_escalonador.emplace_back(threads_function_escalonador, ref(escalonador), ref(ram), ref(instructionAddresses), i, ref(threadCosts));
     }
@@ -103,15 +104,15 @@ int main() {
     }
 
     ram.display();
-    for (int i = 0; i < instructionAddresses.size(); i++)
+    /*for (int i = 0; i < instructionAddresses.size(); i++)
     {
         cout << "instructinoaisjdoia; " << instructionAddresses[i] << endl;
-    }
+    }*/
        auto end = chrono::high_resolution_clock::now();
 
     chrono::duration<double> elapsed = end - start;
 
-    //cout << "Tempo de execução: " << elapsed.count() << " segundos" << endl;
+    cout << "Tempo de execução: " << elapsed.count() << " segundos" << endl;
 
 
     return 0;
