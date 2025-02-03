@@ -10,9 +10,9 @@
 #include <chrono>
 #include <fstream>
 #include <sstream>
+#include <unordered_set>
 #include "Core.hpp"
 #include "Barramento.hpp"
-#include <unordered_set>
 
 class Escalonador {
 private:
@@ -25,14 +25,19 @@ private:
     mutex queue_mutex;
 
 public:
-    Escalonador(int num_cores, RAM& ram, Disco& disco,const vector<int>& instructionAddresses);
-    int tempo_simulado = 0; 
-
+    Escalonador(int num_cores, RAM& ram, Disco& disco,const vector<int>& instructionAddresses, Cache& cache);
+    float tempo_simulado = 0; 
+    float tempo_reduzido = 0;
+    float cont_cache_hit = 0;
+    
     void atualizarTempo(int quantum) {
         tempo_simulado += quantum; // Incrementa o tempo simulado
+        tempo_reduzido = cont_cache_hit*0.6;
+        tempo_simulado = tempo_simulado - tempo_reduzido;
+        cont_cache_hit = 0;
     }
     string getTimestamp() {
-        return "Tempo: " + std::to_string(tempo_simulado);
+        return "Tempo: " + to_string(tempo_simulado);
     }
 
     void run_thread(RAM& ram,int thread_id,const vector<int>& instructionAddresses);

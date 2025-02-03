@@ -18,6 +18,8 @@
 #include <iostream>
 #include <mutex>
 #include <filesystem>
+#include <unordered_set>
+#include <map>
 
 using namespace std;
 namespace fs = filesystem;
@@ -26,10 +28,70 @@ void thread_function(RAM& ram, vector<int>& instructionAddresses, int thread_id,
 int loadInstructionsFromFile(RAM& ram, const string& instrFilename, int& instructionAdress);
 void threads_function_escalonador(Escalonador& escalonador, RAM& ram, vector<int>& instructionAddresses, int thread_id);
 
+vector<vector<string>> findClusters(const map<string, unordered_set<string>>& fileInstructionsMap) {
+    map<string, vector<pair<string, int>>> similarityGraph;
+    
+    vector<string> filenames;
+    for (const auto& [filename, _] : fileInstructionsMap) {
+        filenames.push_back(filename);
+    }
+
+    int numFiles = filenames.size();
+
+    // Criar um grafo de similaridade baseado no número de instruções iguais
+    for (int i = 0; i < numFiles; ++i) {
+        for (int j = i + 1; j < numFiles; ++j) {
+            const string& file1 = filenames[i];
+            const string& file2 = filenames[j];
+
+            int commonCount = 0;
+            for (const auto& instr : fileInstructionsMap.at(file1)) {
+                if (fileInstructionsMap.at(file2).count(instr)) {
+                    commonCount++;
+                }
+            }
+
+            // Apenas adicionamos uma aresta no grafo se há pelo menos 2 similaridade
+            if (commonCount > 1) {
+                similarityGraph[file1].emplace_back(file2, commonCount);
+                similarityGraph[file2].emplace_back(file1, commonCount);
+            }
+        }
+    }
+
+    // Criamos os grupos utilizando DFS para agrupar os arquivos mais similares
+    vector<vector<string>> clusters;
+    unordered_set<string> visited;
+
+    function<void(const string&, vector<string>&)> dfs = [&](const string& file, vector<string>& cluster) {
+        visited.insert(file);
+        cluster.push_back(file);
+        
+        for (const auto& [neighbor, weight] : similarityGraph[file]) {
+            if (!visited.count(neighbor)) {
+                dfs(neighbor, cluster);
+            }
+        }
+    };
+
+    for (const auto& [file, _] : similarityGraph) {
+        if (!visited.count(file)) {
+            vector<string> cluster;
+            dfs(file, cluster);
+            clusters.push_back(cluster);
+        }
+    }
+
+    return clusters;
+}
+
+map<string, vector<string>> fileInstructionsMap; // Armazena as instruções de cada arquivo
+
 int main() {
     auto start = chrono::high_resolution_clock::now();
     RAM ram;
     Disco disco;
+    Cache cache;
     Perifericos periferico;
 
     periferico.estadoPeriferico("teclado", true);
@@ -52,7 +114,7 @@ int main() {
     }
 
     const int num_cores = 2;
-    const int num_threads = fileCount-1;
+    const int num_threads = fileCount -1;
     int instructionAdress = 0;
 
     vector<int> instructionAddresses(num_threads, 0);
@@ -70,12 +132,53 @@ int main() {
         t.join();
     }
 
-    Escalonador escalonador(num_cores, ram, disco, instructionAddresses);
+    map<string, unordered_set<string>> instructionSets;
+    for (const auto& [file, instructions] : fileInstructionsMap) {
+        instructionSets[file] = unordered_set<string>(instructions.begin(), instructions.end());
+    }
+
+    // Encontramos os grupos
+    vector<vector<string>> clusters = findClusters(instructionSets);
+
+    // Exibimos os clusters
+    cout << "Grupos de arquivos similares:\n";
+    for (const auto& cluster : clusters) {
+        cout << "[ ";
+        for (const auto& file : cluster) {
+            cout << file << " ";
+        }
+        cout << "]\n";
+    }
+
+    vector<int> ordemExecucao;
+    map<string, int> fileIndexMap;
+
+    // Mapeamos cada arquivo para seu índice original
+    for (int i = 0; i < instructionAddresses.size(); ++i) {
+        string filename = "data/data" + to_string(i + 1) + ".txt";
+        fileIndexMap[filename] = i;
+    }
+
+    // Adicionamos os arquivos na ordem dos clusters
+    for (const auto& cluster : clusters) {
+        for (const auto& file : cluster) {
+            if (fileIndexMap.find(file) != fileIndexMap.end()) {
+                ordemExecucao.push_back(fileIndexMap[file]);
+            }
+        }
+    }
+
+    Escalonador escalonador(num_cores, ram, disco,instructionAddresses, cache);
 
     for (int i = 0; i < num_threads; ++i)
     {
         threads_escalonador.emplace_back(threads_function_escalonador, ref(escalonador), ref(ram), ref(instructionAddresses), i);
     }
+
+    /*for (int thread_id : ordemExecucao) {
+        threads_escalonador.emplace_back(threads_function_escalonador, ref(escalonador), ref(ram), ref(instructionAddresses), thread_id);
+    }*/
+
 
     for (auto& t : threads_escalonador) {
         t.join();
@@ -90,7 +193,7 @@ int main() {
 
     chrono::duration<double> elapsed = end - start;
 
-    //cout << "Tempo de execução: " << elapsed.count() << " segundos" << endl;
+    cout << "Tempo de execução: " << elapsed.count() << " segundos" << endl;
 
 
     return 0;
@@ -113,7 +216,6 @@ void thread_function(RAM& ram, vector<int>& instructionAddresses, int thread_id,
     }
 }
 
-
 int loadInstructionsFromFile(RAM& ram, const string& instrFilename, int& instructionAdress) {
     ifstream file(instrFilename);
     if (!file.is_open()) {
@@ -122,18 +224,13 @@ int loadInstructionsFromFile(RAM& ram, const string& instrFilename, int& instruc
     }
 
     string line;
-
     while (getline(file, line)) {
         string opcodeStr;
         int rd, reg2, reg3;
         char virgula;
-
         stringstream ss(line);
-
         getline(ss, opcodeStr, ',');
-
         opcodeStr.erase(remove_if(opcodeStr.begin(), opcodeStr.end(), ::isspace), opcodeStr.end());
-
         ss >> rd >> virgula >> reg2 >> virgula >> reg3;
 
         Opcode opcode;
@@ -150,8 +247,14 @@ int loadInstructionsFromFile(RAM& ram, const string& instrFilename, int& instruc
             continue;
         }
 
-        Instruction instr(opcode, rd, reg2, reg3);
+        // Criar a string completa da instrução
+        string instrString = opcodeStr + "," + to_string(rd) + "," + to_string(reg2) + "," + to_string(reg3);
+        
+        // Adicionar a instrução ao mapa auxiliar
+        fileInstructionsMap[instrFilename].push_back(instrString);
 
+        // Criar a instrução e armazenar na RAM
+        Instruction instr(opcode, rd, reg2, reg3);
         if (instructionAdress < ram.tamanho) {
             ram.instruction_memory[instructionAdress++] = instr;
         } else {
@@ -160,6 +263,5 @@ int loadInstructionsFromFile(RAM& ram, const string& instrFilename, int& instruc
         }
     }
     file.close();
-
     return instructionAdress;
 }

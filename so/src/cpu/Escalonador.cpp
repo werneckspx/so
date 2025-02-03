@@ -1,11 +1,11 @@
 #include "../includes/Escalonador.hpp"
 
 // Construtor da classe Escalonador
-Escalonador::Escalonador(int num_cores, RAM& ram, Disco& disco, const vector<int>& instructionAddresses) 
+Escalonador::Escalonador(int num_cores, RAM& ram, Disco& disco, const vector<int>& instructionAddresses, Cache& cache) 
     : barramento(instructionAddresses.size()) {
     // Inicializa os núcleos
     for (int i = 0; i < num_cores; ++i) {
-        cores.emplace_back(ram, disco); // Adiciona um novo core
+        cores.emplace_back(ram, disco,cache); // Adiciona um novo core
         core_mutexes.emplace_back(make_unique<mutex>()); // Adiciona um mutex para o core
     }
 
@@ -60,7 +60,7 @@ void Escalonador::run_thread(RAM& ram, int thread_id, const vector<int>& instruc
 
         if (current_thread_id != -1 && core_index != -1) {
             ThreadContext& context = thread_contexts[current_thread_id];
-            bool thread_completed = cores[core_index].activate_with_context(context, ram, output_mutex);
+            bool thread_completed = cores[core_index].activate_with_context(context, ram, output_mutex, cont_cache_hit);
 
             // Atualiza o tempo simulado com o valor do quantum
             atualizarTempo(context.quantum);

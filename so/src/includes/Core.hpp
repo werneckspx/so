@@ -11,6 +11,7 @@
 #include "Pipeline.hpp"
 #include "Disco.hpp"
 #include "Pipeline.hpp"
+#include "Cache.hpp"
 #include <thread>
 #include <mutex>
 
@@ -42,10 +43,11 @@ public:
     UnidadeControle uc;
     RAM& ram;
     Disco& disco;
+    Cache& cache;
     int Clock;
 
-    Core(RAM& ram, Disco& disco);
-    bool activate_with_context(ThreadContext& context, RAM& ram, mutex& output_mutex);
+    Core(RAM& ram, Disco& disco, Cache& cache);
+    bool activate_with_context(ThreadContext& context, RAM& ram, mutex& output_mutex,float& cont_cach_hit);
     bool is_busy() const;
 };
 #endif

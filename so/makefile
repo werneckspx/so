@@ -6,7 +6,7 @@ OBJ_DIR  := $(BUILD)/objects
 APP_DIR  := $(BUILD)/
 TARGET   := app
 INCLUDE  := -Iinclude/
-SRC      :=  $(wildcard src/*.cpp) $(wildcard src/cpu/*.cpp) $(wildcard src/mainMemory/*.cpp) $(wildcard src/pipeline/*.cpp) $(wildcard src/secondaryMemory/*.cpp) $(wildcard src/perifericos/*.cpp)
+SRC      :=  $(wildcard src/*.cpp) $(wildcard src/cpu/*.cpp) $(wildcard src/mainMemory/*.cpp) $(wildcard src/pipeline/*.cpp) $(wildcard src/secondaryMemory/*.cpp) $(wildcard src/perifericos/*.cpp) $(wildcard src/Cache/*.cpp)
 
 OBJECTS := $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 
