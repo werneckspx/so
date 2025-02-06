@@ -20,6 +20,7 @@
 #include <filesystem>
 #include <unordered_set>
 #include <map>
+#define clusterizacao_ativa true
 
 using namespace std;
 namespace fs = filesystem;
@@ -170,15 +171,16 @@ int main() {
 
     Escalonador escalonador(num_cores, ram, disco,instructionAddresses, cache);
 
-    for (int i = 0; i < num_threads; ++i)
-    {
-        threads_escalonador.emplace_back(threads_function_escalonador, ref(escalonador), ref(ram), ref(instructionAddresses), i);
+    if(clusterizacao_ativa){
+        for (int thread_id : ordemExecucao) {
+            threads_escalonador.emplace_back(threads_function_escalonador, ref(escalonador), ref(ram), ref(instructionAddresses), thread_id);
+        }
+    }else{
+        for (int i = 0; i < num_threads; ++i)
+        {
+            threads_escalonador.emplace_back(threads_function_escalonador, ref(escalonador), ref(ram), ref(instructionAddresses), i);
+        }
     }
-
-    /*for (int thread_id : ordemExecucao) {
-        threads_escalonador.emplace_back(threads_function_escalonador, ref(escalonador), ref(ram), ref(instructionAddresses), thread_id);
-    }*/
-
 
     for (auto& t : threads_escalonador) {
         t.join();
@@ -193,7 +195,7 @@ int main() {
 
     chrono::duration<double> elapsed = end - start;
 
-    cout << "Tempo de execução: " << elapsed.count() << " segundos" << endl;
+    //cout << "Tempo de execução: " << elapsed.count() << " segundos" << endl;
 
 
     return 0;
