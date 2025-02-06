@@ -13,4 +13,6 @@ struct DecodedInstruction {
 
 DecodedInstruction InstructionDecode(const Instruction& instr, const Registers& regs);
 
+bool operator==(const DecodedInstruction& lhs, const DecodedInstruction& rhs);
+
 #endif

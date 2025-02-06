@@ -12,7 +12,7 @@ Pipeline::Pipeline() {} // Construtor da classe Pipeline
 
 // Método que processa o pipeline
 void Pipeline::PipelineProcess(Registers& regs, RAM& ram, int& relative_PC, int end_address, const string& regsFilename, Disco& disco, 
-    int& Clock, int& instructions_executed, int& quantum_remaing,int& remaing_cost) {
+    int& Clock, int& instructions_executed, int& quantum_remaing,int& remaing_cost,Cache& cache, float& cont_cach_hit) {
     //cout << "Iniciando o processamento do pipeline para Thread com limite: " << end_address << endl;
 
     map<int, int> operationWeights_pip = {
@@ -41,16 +41,30 @@ void Pipeline::PipelineProcess(Registers& regs, RAM& ram, int& relative_PC, int 
 
         // Decodifica a instrução
         DecodedInstruction decodedInstr = InstructionDecode(instr, regs);
+
+        int resultado=0;
+
+        if (cache.in_cache(decodedInstr, resultado)) {
+            cout << "[CACHE HIT]: Resultado: " << resultado << endl;
+            cont_cach_hit = cont_cach_hit + 1;
+            regs.set(decodedInstr.destiny, resultado);
+        } else {
+            Execute(decodedInstr, regs, ram, relative_PC, disco, Clock,resultado);
+            cache.add_cache(decodedInstr, resultado);
+            cout << "[CACHE MISS]: Executando instrucao e armazenando na cache." << endl;
+        }
+
         Clock++; // Incrementa o clock
 
-        /*cout << "[ID]: "
+        cout << "[ID]: "
              << "Opcode: " << decodedInstr.opcode
              << ", Destino: R" << decodedInstr.destiny
              << ", Operando 1: " << decodedInstr.value1
-             << ", Operando 2: " << decodedInstr.value2 << endl;*/
+             << ", Operando 2: " << decodedInstr.value2 << endl;
+
+        cache.print_cache();
 
         // Executa a instrução
-        Execute(decodedInstr, regs, ram, relative_PC, disco, Clock);
         
         // Move para a próxima instrução
         ++relative_PC; // Incrementa em 1, pois estamos usando o índice da instrução
@@ -85,10 +99,10 @@ void Pipeline::MemoryAccess(const DecodedInstruction& decoded, int resultado, Re
     Clock++;
 }
 
-void Pipeline::Execute(const DecodedInstruction& decoded, Registers& regs, RAM& ram, int& PC, Disco& disco, int& Clock) {
+void Pipeline::Execute(const DecodedInstruction& decoded, Registers& regs, RAM& ram, int& PC, Disco& disco, int& Clock, int& resultado) {
     switch (decoded.opcode) {
         case ADD: {
-            int resultado = ula.exec(decoded.value1, decoded.value2, ADD);
+            resultado = ula.exec(decoded.value1, decoded.value2, ADD);
             Clock++;
             MemoryAccess(decoded, resultado, regs, Clock);
             
@@ -96,7 +110,7 @@ void Pipeline::Execute(const DecodedInstruction& decoded, Registers& regs, RAM& 
             break;
         }
         case SUB: {
-            int resultado = ula.exec(decoded.value1, decoded.value2, SUB);
+            resultado = ula.exec(decoded.value1, decoded.value2, SUB);
             Clock++;
             MemoryAccess(decoded, resultado, regs, Clock);
             
@@ -104,7 +118,7 @@ void Pipeline::Execute(const DecodedInstruction& decoded, Registers& regs, RAM& 
             break;
         }
         case AND: {
-            int resultado = ula.exec(decoded.value1, decoded.value2, AND);
+            resultado = ula.exec(decoded.value1, decoded.value2, AND);
             Clock++;
             MemoryAccess(decoded, resultado, regs, Clock);
             
@@ -112,7 +126,7 @@ void Pipeline::Execute(const DecodedInstruction& decoded, Registers& regs, RAM& 
             break;
         }
         case OR: {
-            int resultado = ula.exec(decoded.value1, decoded.value2, OR);
+            resultado = ula.exec(decoded.value1, decoded.value2, OR);
             Clock++;
             MemoryAccess(decoded, resultado, regs, Clock);
             
@@ -120,23 +134,23 @@ void Pipeline::Execute(const DecodedInstruction& decoded, Registers& regs, RAM& 
             break;
         }
         case LOAD: {
-            int valor = ram.read(decoded.value1);
+            resultado = ram.read(decoded.value1);
             Clock++;
-            MemoryAccess(decoded, valor, regs, Clock);
+            MemoryAccess(decoded, resultado, regs, Clock);
             cout << "LOAD R" << decoded.destiny << " = RAM[" << decoded.value1 << "] -> " << regs.get(decoded.destiny) << endl;
             break;
         }
         case STORE: {
-            int valor = regs.get(decoded.destiny);
+            resultado = regs.get(decoded.destiny);
             Clock++;
-            Wb(decoded, valor, ram, disco, Clock);
-            cout << "STORE RAM[" << decoded.value1 << "] = R" << decoded.destiny << " -> " << valor << endl;
-            disco.write(valor);
+            Wb(decoded, resultado, ram, disco, Clock);
+            cout << "STORE RAM[" << decoded.value1 << "] = R" << decoded.destiny << " -> " << resultado << endl;
+            disco.write(resultado);
             //cout << "STORE DISK[" << valor << "]" << endl;
             break;
         }
         case MULT: {
-            int resultado = ula.exec(decoded.value1, decoded.value2, MULT);
+            resultado = ula.exec(decoded.value1, decoded.value2, MULT);
             Clock++;
             MemoryAccess(decoded, resultado, regs, Clock);
             
@@ -145,7 +159,7 @@ void Pipeline::Execute(const DecodedInstruction& decoded, Registers& regs, RAM& 
         }
         case DIV: {
             if (decoded.value2 != 0) {
-                int resultado = ula.exec(decoded.value1, decoded.value2, DIV);
+                resultado = ula.exec(decoded.value1, decoded.value2, DIV);
                 Clock++;
                 MemoryAccess(decoded, resultado, regs, Clock);
                 
@@ -156,7 +170,7 @@ void Pipeline::Execute(const DecodedInstruction& decoded, Registers& regs, RAM& 
             break;
         }
         case IF_igual: {
-            int resultado = (decoded.value1 == decoded.value2) ? 1 : 0;
+            resultado = (decoded.value1 == decoded.value2) ? 1 : 0;
             Clock++;
             MemoryAccess(decoded, resultado, regs, Clock);
             
@@ -164,7 +178,7 @@ void Pipeline::Execute(const DecodedInstruction& decoded, Registers& regs, RAM& 
             break;
         }
         case ENQ: {
-            int resultado = decoded.value1;
+            resultado = decoded.value1;
             cout << "OPERADOR 1: " << decoded.value1 << endl;
             cout << "OPERADOR 2: " << decoded.value2 << endl;
             

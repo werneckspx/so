@@ -1,12 +1,12 @@
 #include "../includes/Core.hpp"
 
 // Construtor da classe Core, inicializa a RAM e o disco
-Core::Core(RAM& ram, Disco& disco) : ram(ram), disco(disco), Clock(0),busy(false) {
+Core::Core(RAM& ram, Disco& disco, Cache& cache) : ram(ram), disco(disco), cache(cache), Clock(0),busy(false){
     cout << "Core inicializado com RAM\n"; // Mensagem de inicialização
 }
 
 // Método que ativa o core com o contexto da thread
-bool Core::activate_with_context(ThreadContext& context, RAM& ram, mutex& output_mutex) {
+bool Core::activate_with_context(ThreadContext& context, RAM& ram, mutex& output_mutex, float& cont_cach_hit) {
     lock_guard<mutex> lock(output_mutex); // Bloqueia o mutex para evitar condições de corrida
 
     int instructions_executed = 0;
@@ -26,7 +26,7 @@ bool Core::activate_with_context(ThreadContext& context, RAM& ram, mutex& output
     // Executa apenas as instruções dentro do intervalo da thread
     while (relative_PC < context.end_address && quantum_remaing > 0) {
         try {
-            uc.executarInstrucao(regs, ram, relative_PC, context.end_address,"data/setRegisters.txt", disco, Clock, instructions_executed, quantum_remaing, remaing_cost);
+            uc.executarInstrucao(regs, ram, relative_PC, context.end_address,"data/setRegisters.txt", disco, Clock, instructions_executed, quantum_remaing, remaing_cost,cache,cont_cach_hit);
             if (relative_PC >= context.end_address) {
                 //cout << "PipelineProcess concluído: todas as instruções foram executadas." << endl;
                 return true;

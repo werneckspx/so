@@ -38,11 +38,16 @@ private:
 public:
     vector<int> threadCosts;
     vector<ThreadContext> thread_contexts;
-    Escalonador(int num_cores, RAM& ram, Disco& disco,const vector<int>& instructionAddresses);
-    int tempo_simulado = 0; 
+    Escalonador(int num_cores, RAM& ram, Disco& disco,const vector<int>& instructionAddresses, Cache& cache);
+    float tempo_simulado = 0; 
+    float tempo_reduzido = 0;
+    float cont_cache_hit = 0;
 
     void atualizarTempo(int quantum) {
         tempo_simulado += quantum; // Incrementa o tempo simulado
+        tempo_reduzido = cont_cache_hit*0.6;
+        tempo_simulado = tempo_simulado - tempo_reduzido;
+        cont_cache_hit = 0;
     }
     string getTimestamp() {
         return "Tempo: " + std::to_string(tempo_simulado);
