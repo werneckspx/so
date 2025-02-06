@@ -37,15 +37,15 @@ void Pipeline::PipelineProcess(Registers& regs, RAM& ram, int& relative_PC, int 
         DecodedInstruction decodedInstr = InstructionDecode(instr, regs);
         int resultado=0;
 
-        /*if (cache.in_cache(decodedInstr, resultado)) {
+        if (cache.in_cache(decodedInstr, resultado)) {
             cout << "[CACHE HIT]: Resultado: " << resultado << endl;
             cont_cach_hit = cont_cach_hit + 1;
             regs.set(decodedInstr.destiny, resultado);
-        } else {*/
+        } else {
             Execute(decodedInstr, regs, ram, relative_PC, disco, Clock,resultado);
-        /*    cache.add_cache(decodedInstr, resultado);
+            cache.add_cache(decodedInstr, resultado);
             cout << "[CACHE MISS]: Executando instrucao e armazenando na cache." << endl;
-        }*/
+        }
 
         Clock++; // Incrementa o clock
         
