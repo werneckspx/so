@@ -1,8 +1,8 @@
 #include "../includes/Escalonador.hpp"
+#include <bitset>
 
-// Construtor da classe Escalonador
-Escalonador::Escalonador(int num_cores, RAM& ram, Disco& disco, const vector<int>& instructionAddresses,Cache& cache) 
-    : barramento(instructionAddresses.size()),waiting_threads(CompareThreadCost(thread_contexts)) {
+Escalonador::Escalonador(int num_cores, RAM& ram, Disco& disco, const vector<int>& instructionAddresses, Cache& cache) 
+    : barramento(instructionAddresses.size()), waiting_threads(CompareThreadCost(thread_contexts)) {
     // Inicializa os núcleos
     for (int i = 0; i < num_cores; ++i) {
         cores.emplace_back(ram, disco, cache); // Adiciona um novo core
@@ -13,14 +13,15 @@ Escalonador::Escalonador(int num_cores, RAM& ram, Disco& disco, const vector<int
     for (size_t i = 0; i < instructionAddresses.size(); ++i) {
         int start_addr = (i > 0) ? instructionAddresses[i-1] : 0; // Define o endereço de início
         int end_addr = instructionAddresses[i]; // Define o endereço final
-        thread_contexts.emplace_back(start_addr, end_addr, i,2); // Cria o contexto da thread
+        thread_contexts.emplace_back(start_addr, end_addr, i, 2); // Cria o contexto da thread
     }
 }
 
 void Escalonador::run_thread(RAM& ram, int thread_id, const vector<int>& instructionAddresses) {
     {
         unique_lock<mutex> lock(queue_mutex);
-        waiting_threads.push(thread_id); // Adiciona a thread à fila de prioridade
+        string binary_thread_id = bitset<8>(thread_id).to_string();
+        waiting_threads.push({binary_thread_id, thread_contexts[thread_id].remaining_cost}); // Adiciona a thread à fila de prioridade
     }
 
     while (!barramento.all_threads_completed()) {
@@ -33,7 +34,8 @@ void Escalonador::run_thread(RAM& ram, int thread_id, const vector<int>& instruc
                 for (size_t i = 0; i < cores.size(); ++i) {
                     if (core_mutexes[i]->try_lock()) {
                         if (!cores[i].is_busy()) {
-                            current_thread_id = waiting_threads.top(); // Pega a thread com menor custo
+                            current_thread_id = bitset<8>(waiting_threads.top().first).to_ulong();
+                            cout << "BINARIO: " << waiting_threads.top().first << " DECIMAL: " << current_thread_id << endl;
                             waiting_threads.pop(); // Remove a thread da fila
                             core_index = i;
                             running_threads.insert(current_thread_id);
@@ -59,8 +61,8 @@ void Escalonador::run_thread(RAM& ram, int thread_id, const vector<int>& instruc
 
         if (current_thread_id != -1 && core_index != -1) {
             ThreadContext& context = thread_contexts[current_thread_id];
-            bool thread_completed = cores[core_index].activate_with_context(context, ram, output_mutex,cont_cache_hit);
-
+            bool thread_completed = cores[core_index].activate_with_context(context, ram, output_mutex, cont_cache_hit);
+            
             atualizarTempo(context.quantum);
             cout << endl;
 
@@ -72,7 +74,10 @@ void Escalonador::run_thread(RAM& ram, int thread_id, const vector<int>& instruc
                     cout << "[" << getTimestamp() << "] "
                          << "Thread " << current_thread_id << " marcada como concluída." << endl;
                 } else {
-                    waiting_threads.push(current_thread_id); // Reinsere a thread na fila de prioridade
+                    string binary_thread_id = bitset<8>(current_thread_id).to_string();
+                    waiting_threads.push({binary_thread_id, context.remaining_cost}); // Reinsere a thread na fila de prioridade
+                    float custo = instructionAddresses[current_thread_id];
+                    atualizarTempo(-custo*(0.1));
                 }
             }
 

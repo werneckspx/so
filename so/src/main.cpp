@@ -21,6 +21,8 @@
 #include <filesystem>
 #include <map>
 #define clusterizacao_ativa false
+#include <functional>
+#include <bitset>
 
 using namespace std;
 namespace fs = filesystem;
@@ -190,13 +192,23 @@ int main() {
         sort(indices.begin(), indices.end(), [&threadCosts](int a, int b) {
             return threadCosts[a] < threadCosts[b];
         });
-        
-        for (int i : indices) {
-            escalonador.thread_contexts[i].remaining_cost = threadCosts[i];
-            cout << "Iniciando thread " << i << " com custo " << threadCosts[i] << endl;
+
+        vector<string> binaryIndices(num_threads);
+        for (int i = 0; i < num_threads; ++i) {
+            binaryIndices[i] = bitset<8>(indices[i]).to_string();
         }
-        for (int i : indices) {
-            threads_escalonador.emplace_back(threads_function_escalonador, ref(escalonador), ref(ram), ref(instructionAddresses), i, ref(threadCosts));
+
+
+
+        for (const auto& binIndex : binaryIndices) {
+            int decimalIndex = bitset<8>(binIndex).to_ulong(); 
+            escalonador.thread_contexts[decimalIndex].remaining_cost = threadCosts[decimalIndex];
+            cout << "Iniciando thread " << binIndex << " com custo " << threadCosts[decimalIndex] << endl;
+        }
+
+        for (const auto& binIndex : binaryIndices) {
+            int decimalIndex = bitset<8>(binIndex).to_ulong(); 
+            threads_escalonador.emplace_back(threads_function_escalonador, ref(escalonador), ref(ram), ref(instructionAddresses), decimalIndex, ref(threadCosts));
         }
     }
 
